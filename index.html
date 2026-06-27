@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多功能电子礼簿系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Excel导出依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        weddingRed: '#c41e3a',
+                        weddingLight: '#fff0f0',
+                        gold: '#d4af37',
+                        birthdayGold: '#b8860b',
+                        funeralGray: '#555555',
+                        simpleBlue: '#2563eb'
+                    },
+                    fontFamily: {
+                        song: ['SimSun', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fff8f8;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 0 L60 40 L100 40 L70 65 L80 100 L50 80 L20 100 L30 65 L0 40 L40 40 Z' fill='%23ffdddd' opacity='0.4'/%3E%3C/svg%3E");
+        }
+        .red-card {
+            background: linear-gradient(145deg, #c41e3a, #a0172e);
+        }
+        .gold-card {
+            background: linear-gradient(145deg, #b8860b, #8b6508);
+        }
+        .gray-card {
+            background: linear-gradient(145deg, #666, #444);
+        }
+        .blue-card {
+            background: linear-gradient(145deg, #2563eb, #1d4ed8);
+        }
+        .gold-border {
+            border: 2px solid #d4af37;
+        }
+        .table-row-odd {
+            background-color: #fff0f0;
+        }
+        .modal-enter {
+            animation: modalIn 0.2s ease-out;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        /* 打印样式 */
+        @media print {
+            header, .no-print, .modal {
+                display: none !important;
+            }
+            body {
+                background: #fff !important;
+            }
+            .print-area {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen font-song text-gray-800">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] text-weddingRed font-bold tracking-wider">
+                <i class="fa fa-book mr-2"></i>多功能电子礼簿系统
+            </h1>
+            <p class="text-gray-600 mt-2">礼金登记 · 统计筛选 · 导出打印 · 数据备份</p>
+        </header>
+
+        <!-- 首页创建事项 -->
+        <div id="page-home" class="block">
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <div class="red-card text-white rounded-xl p-6 shadow-lg gold-border">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fa fa-plus-circle mr-2"></i>创建新礼簿事项
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block mb-1">事项名称 <span class="text-gold">(如：新婚/寿宴/乔迁)</span></label>
+                            <input type="text" id="eventName" class="w-full px-3 py-2 rounded text-gray-900 outline-none" placeholder="请输入喜事名称">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block mb-1">开始时间</label>
+                                <input type="datetime-local" id="startTime" class="w-full px-3 py-2 rounded text-gray-900">
+                            </div>
+                            <div>
+                                <label class="block mb-1">结束时间</label>
+                                <input type="datetime-local" id="endTime" class="w-full px-3 py-2 rounded text-gray-900">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block mb-1">管理密码 <span class="text-gold">(删除/编辑数据需验证)</span></label>
+                            <input type="password" id="adminPwd" class="w-full px-3 py-2 rounded text-gray-900" placeholder="至少6位数字字母">
+                        </div>
+                        <div>
+                            <label class="block mb-1">主题风格</label>
+                            <select id="themeStyle" class="w-full px-3 py-2 rounded text-gray-900">
+                                <option value="weddingRed">喜庆红 - 婚礼/满月</option>
+                                <option value="birthdayGold">富贵金 - 寿宴/大寿</option>
+                                <option value="funeralGray">素雅灰 - 白事</option>
+                                <option value="simpleBlue">简约蓝 - 通用乔迁</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block mb-1">语音播报音色</label>
+                            <select id="voiceType" class="w-full px-3 py-2 rounded text-gray-900">
+                                <option value="default">系统默认</option>
+                                <option value="female">温柔女声</option>
+                                <option value="male">沉稳男声</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block mb-1">记账人姓名</label>
+                            <input type="text" id="bookKeeper" class="w-full px-3 py-2 rounded text-gray-900" placeholder="登记负责人">
+                        </div>
+                        <button onclick="createEvent()" class="w-full bg-gold text-red-900 font-bold py-3 rounded-lg hover:bg-yellow-400 transition">
+                            <i class="fa fa-check mr-1"></i>创建礼簿
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-6 shadow-lg gold-border">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-weddingRed flex items-center">
+                            <i class="fa fa-list-alt mr-2"></i>已有礼簿
+                        </h2>
+                        <div class="space-x-2">
+                            <button onclick="importAllData()" class="px-2 py-1 bg-blue-500 text-white rounded text-sm"><i class="fa fa-upload"></i>导入备份</button>
+                            <button onclick="exportAllData()" class="px-2 py-1 bg-green-500 text-white rounded text-sm"><i class="fa fa-download"></i>全部导出</button>
+                        </div>
+                    </div>
+                    <div id="eventList" class="space-y-3 max-h-[500px] overflow-y-auto">
+                        <p class="text-gray-500 text-center py-10">暂无礼簿，请新建事项</p>
+                    </div>
+                    <input type="file" id="fileImport" class="hidden" accept=".json" onchange="readImportFile(event)">
+                </div>
+            </div>
+        </div>
+
+        <!-- 礼簿记账主页面 -->
+        <div id="page-book" class="hidden">
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-4 no-print">
+                <h2 class="text-2xl text-weddingRed font-bold" id="currentEventTitle"></h2>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="backHome()" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">
+                        <i class="fa fa-home"></i> 返回首页
+                    </button>
+                    <button onclick="openAddGiftModal()" class="px-3 py-2 bg-weddingRed text-white rounded hover:bg-red-700">
+                        <i class="fa fa-user-plus"></i> 新增礼金
+                    </button>
+                    <button onclick="clearAllGift()" class="px-3 py-2 bg-orange-500 text-white rounded">
+                        <i class="fa fa-trash"></i>清空全部记录
+                    </button>
+                    <button onclick="exportExcel()" class="px-3 py-2 bg-green-500 text-white rounded">
+                        <i class="fa fa-file-excel-o"></i>导出Excel
+                    </button>
+                    <button onclick="printBook()" class="px-3 py-2 bg-blue-500 text-white rounded">
+                        <i class="fa fa-print"></i>打印礼簿
+                    </button>
+                </div>
+            </div>
+
+            <!-- 统计面板 -->
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 print-area">
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">总人数</div>
+                    <div class="text-2xl text-weddingRed font-bold" id="totalPeople">0</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">礼金总额</div>
+                    <div class="text-2xl text-weddingRed font-bold">¥<span id="totalMoney">0</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">平均礼金</div>
+                    <div class="text-2xl text-weddingRed font-bold">¥<span id="avgMoney">0</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">最高礼金</div>
+                    <div class="text-2xl text-weddingRed font-bold">¥<span id="maxMoney">0</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">最低礼金</div>
+                    <div class="text-2xl text-weddingRed font-bold">¥<span id="minMoney">0</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow text-center gold-border">
+                    <div class="text-gray-600">记账人</div>
+                    <div class="text-lg text-weddingRed font-bold" id="showBookKeeper">-</div>
+                </div>
+            </div>
+
+            <!-- 搜索筛选栏 -->
+            <div class="bg-white p-4 rounded-lg shadow mb-4 gold-border no-print">
+                <div class="grid md:grid-cols-5 gap-3 items-end">
+                    <div>
+                        <label class="text-sm">姓名搜索</label>
+                        <input type="text" id="searchName" class="w-full border px-3 py-2 rounded" placeholder="输入姓名筛选" oninput="renderGiftTable()">
+                    </div>
+                    <div>
+                        <label class="text-sm">最低金额</label>
+                        <input type="number" id="filterMin" min="0" class="w-full border px-3 py-2 rounded" placeholder="0" oninput="renderGiftTable()">
+                    </div>
+                    <div>
+                        <label class="text-sm">最高金额</label>
+                        <input type="number" id="filterMax" min="0" class="w-full border px-3 py-2 rounded" placeholder="不限" oninput="renderGiftTable()">
+                    </div>
+                    <div>
+                        <label class="text-sm">排序方式</label>
+                        <select id="sortType" class="w-full border px-3 py-2 rounded" onchange="renderGiftTable()">
+                            <option value="idx">登记顺序</option>
+                            <option value="moneyAsc">金额升序</option>
+                            <option value="moneyDesc">金额降序</option>
+                            <option value="name">姓名拼音</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm">备注筛选</label>
+                        <input type="text" id="searchRemark" class="w-full border px-3 py-2 rounded" placeholder="亲戚/礼品" oninput="renderGiftTable()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 礼金表格 -->
+            <div class="bg-white rounded-xl shadow overflow-hidden gold-border print-area">
+                <table class="w-full">
+                    <thead class="bg-weddingRed text-white">
+                        <tr>
+                            <th class="py-3 px-3 text-left">序号</th>
+                            <th class="py-3 px-3 text-left">来宾姓名</th>
+                            <th class="py-3 px-3 text-left">礼金(元)</th>
+                            <th class="py-3 px-3 text-left">备注</th>
+                            <th class="py-3 px-3 text-left">登记时间</th>
+                            <th class="py-3 px-3 text-center no-print">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="giftTableBody">
+                        <tr><td colspan="6" class="text-center py-10 text-gray-500">暂无礼金记录</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/编辑礼金弹窗 -->
+    <div id="modal-add" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 modal">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md modal-enter gold-border">
+            <h3 class="text-xl font-bold text-weddingRed mb-4" id="modalTitle">新增来宾礼金</h3>
+            <input type="hidden" id="editGiftId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block mb-1">来宾姓名</label>
+                    <input type="text" id="guestName" class="w-full border px-3 py-2 rounded" placeholder="请填写姓名">
+                </div>
+                <div>
+                    <label class="block mb-1">礼金金额</label>
+                    <input type="number" min="0" id="giftMoney" class="w-full border px-3 py-2 rounded" placeholder="数字，单位元">
+                </div>
+                <div>
+                    <label class="block mb-1">备注（关系/礼品）</label>
+                    <input type="text" id="giftRemark" class="w-full border px-3 py-2 rounded" placeholder="如：舅舅、鲜花、烟酒">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="closeModal('modal-add')" class="px-4 py-2 bg-gray-200 rounded">取消</button>
+                <button onclick="submitGift()" class="px-4 py-2 bg-weddingRed text-white rounded">确认保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 密码验证弹窗 -->
+    <div id="modal-pwd" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 modal">
+        <div class="bg-white rounded-xl p-6 w-full max-w-sm modal-enter gold-border">
+            <h3 class="text-xl font-bold text-weddingRed mb-4">输入管理密码</h3>
+            <input type="password" id="verifyPwd" class="w-full border px-3 py-2 rounded" placeholder="创建礼簿时设置的密码">
+            <input type="hidden" id="targetOperate">
+            <input type="hidden" id="targetIndex">
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="closeModal('modal-pwd')" class="px-4 py-2 bg-gray-200 rounded">取消</button>
+                <button onclick="checkPwd()" class="px-4 py-2 bg-weddingRed text-white rounded">验证</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "giftBookData";
+        let currentEventId = null;
+
+        window.onload = function() {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            document.getElementById('startTime').value = `${today}T00:00`;
+            document.getElementById('endTime').value = `${today}T23:59`;
+            renderEventList();
+            speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+        }
+
+        // 数据本地存储通用方法
+        function getAllEvents() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : [];
+        }
+        function saveAllEvents(list) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        }
+
+        // 创建礼簿事项
+        function createEvent() {
+            const name = document.getElementById('eventName').value.trim();
+            const start = document.getElementById('startTime').value;
+            const end = document.getElementById('endTime').value;
+            const pwd = document.getElementById('adminPwd').value;
+            const theme = document.getElementById('themeStyle').value;
+            const voice = document.getElementById('voiceType').value;
+            const keeper = document.getElementById('bookKeeper').value.trim();
+
+            if (!name) return alert("请填写事项名称");
+            if (pwd.length < 6) return alert("密码至少6位");
+            if (!start || !end) return alert("请选择时间");
+
+            const events = getAllEvents();
+            events.push({
+                id: Date.now().toString(),
+                name, start, end, pwd, theme, voice, keeper,
+                giftList: []
+            });
+            saveAllEvents(events);
+            alert("礼簿创建成功！");
+            document.getElementById('eventName').value = "";
+            document.getElementById('adminPwd').value = "";
+            document.getElementById('bookKeeper').value = "";
+            renderEventList();
+        }
+
+        // 首页渲染礼簿列表
+        function renderEventList() {
+            const events = getAllEvents();
+            const wrap = document.getElementById('eventList');
+            if (events.length === 0) {
+                wrap.innerHTML = '<p class="text-gray-500 text-center py-10">暂无礼簿，请新建事项</p>';
+                return;
+            }
+            let html = "";
+            events.forEach(item => {
+                html += `
+                <div class="border rounded p-3 flex justify-between items-center hover:bg-weddingLight">
+                    <div>
+                        <div class="font-bold text-weddingRed">${item.name}</div>
+                        <div class="text-sm text-gray-500">记账人：${item.keeper || "无"} | ${item.giftList.length}条记录</div>
+                    </div>
+                    <div class="space-x-2">
+                        <button onclick="openBook('${item.id}')" class="px-3 py-1 bg-weddingRed text-white rounded text-sm">打开</button>
+                        <button onclick="delEvent('${item.id}')" class="px-3 py-1 bg-gray-300 rounded text-sm">删除</button>
+                    </div>
+                </div>`;
+            });
+            wrap.innerHTML = html;
+        }
+
+        // 删除整个礼簿（密码验证）
+        function delEvent(id) {
+            setOperate("delEvent", id);
+            showPwdModal();
+        }
+
+        // 打开礼簿记账页
+        function openBook(id) {
+            currentEventId = id;
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === id);
+            if (!evt) return;
+            document.getElementById('page-home').classList.add('hidden');
+            document.getElementById('page-book').classList.remove('hidden');
+            document.getElementById('currentEventTitle').innerText = evt.name;
+            document.getElementById('showBookKeeper').innerText = evt.keeper || "无";
+            renderGiftTable();
+        }
+
+        function backHome() {
+            currentEventId = null;
+            document.getElementById('page-book').classList.add('hidden');
+            document.getElementById('page-home').classList.remove('hidden');
+            renderEventList();
+        }
+
+        // 打开新增礼金弹窗
+        function openAddGiftModal() {
+            document.getElementById('modalTitle').innerText = "新增来宾礼金";
+            document.getElementById('editGiftId').value = "";
+            document.getElementById('guestName').value = "";
+            document.getElementById('giftMoney').value = "";
+            document.getElementById('giftRemark').value = "";
+            document.getElementById('modal-add').classList.remove('hidden');
+        }
+
+        // 打开编辑礼金弹窗
+        function editGift(giftId) {
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            const gift = evt.giftList.find(g => g.id === giftId);
+            document.getElementById('modalTitle').innerText = "编辑礼金记录";
+            document.getElementById('editGiftId').value = giftId;
+            document.getElementById('guestName').value = gift.name;
+            document.getElementById('giftMoney').value = gift.money;
+            document.getElementById('giftRemark').value = gift.remark;
+            document.getElementById('modal-add').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // 提交新增/编辑礼金
+        function submitGift() {
+            const editId = document.getElementById('editGiftId').value;
+            const name = document.getElementById('guestName').value.trim();
+            const money = Number(document.getElementById('giftMoney').value);
+            const remark = document.getElementById('giftRemark').value.trim();
+            if (!name) return alert("请填写姓名");
+            if (isNaN(money) || money <= 0) return alert("请输入有效金额");
+
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            if (editId) {
+                // 编辑
+                const idx = evt.giftList.findIndex(g => g.id === editId);
+                evt.giftList[idx] = { ...evt.giftList[idx], name, money, remark };
+            } else {
+                // 新增
+                evt.giftList.push({
+                    id: Date.now().toString(),
+                    name, money, remark,
+                    time: new Date().toLocaleString()
+                });
+                voiceBroadcast(`${name}，礼金${money}元`);
+            }
+            saveAllEvents(events);
+            closeModal('modal-add');
+            renderGiftTable();
+        }
+
+        // 渲染礼金表格（筛选+排序）
+        function renderGiftTable() {
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            let list = JSON.parse(JSON.stringify(evt.giftList));
+
+            // 筛选条件
+            const sName = document.getElementById('searchName').value.toLowerCase();
+            const sRemark = document.getElementById('searchRemark').value.toLowerCase();
+            const min = Number(document.getElementById('filterMin').value) || 0;
+            const max = Number(document.getElementById('filterMax').value) || Infinity;
+            const sort = document.getElementById('sortType').value;
+
+            list = list.filter(item => {
+                const matchName = item.name.toLowerCase().includes(sName);
+                const matchRem = item.remark.toLowerCase().includes(sRemark);
+                const matchMoney = item.money >= min && item.money <= max;
+                return matchName && matchRem && matchMoney;
+            });
+
+            // 排序
+            if (sort === "moneyAsc") list.sort((a, b) => a.money - b.money);
+            if (sort === "moneyDesc") list.sort((a, b) => b.money - a.money);
+            if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+            // 统计计算
+            const tbody = document.getElementById('giftTableBody');
+            let total = 0, maxMoney = 0, minMoney = Infinity;
+            list.forEach(g => {
+                total += g.money;
+                maxMoney = Math.max(maxMoney, g.money);
+                minMoney = Math.min(minMoney, g.money);
+            });
+            const avg = list.length ? (total / list.length).toFixed(2) : 0;
+
+            // 更新统计面板
+            document.getElementById('totalPeople').innerText = list.length;
+            document.getElementById('totalMoney').innerText = total;
+            document.getElementById('avgMoney').innerText = avg;
+            document.getElementById('maxMoney').innerText = maxMoney;
+            document.getElementById('minMoney').innerText = list.length ? minMoney : 0;
+
+            // 表格渲染
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">无匹配礼金记录</td>';
+                return;
+            }
+            let html = "";
+            list.forEach((item, idx) => {
+                html += `
+                <tr class="${idx%2===1?'table-row-odd':''}">
+                    <td class="py-3 px-3">${idx+1}</td>
+                    <td class="py-3 px-3">${item.name}</td>
+                    <td class="py-3 px-3 font-bold text-weddingRed">${item.money}</td>
+                    <td class="py-3 px-3 text-gray-600">${item.remark || "-"}</td>
+                    <td class="py-3 px-3 text-sm text-gray-500">${item.time}</td>
+                    <td class="py-3 px-3 text-center no-print space-x-2">
+                        <button onclick="editGift('${item.id}')" class="text-blue-600"><i class="fa fa-pencil"></i></button>
+                        <button onclick="delGift('${item.id}')" class="text-red-600"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // 删除单条礼金
+        function delGift(giftId) {
+            setOperate("delGift", giftId);
+            showPwdModal();
+        }
+
+        // 清空当前全部礼金
+        function clearAllGift() {
+            setOperate("clearAll", "");
+            showPwdModal();
+        }
+
+        // 密码弹窗工具
+        function setOperate(type, id) {
+            document.getElementById('targetOperate').value = type;
+            document.getElementById('targetIndex').value = id;
+            document.getElementById('verifyPwd').value = "";
+        }
+        function showPwdModal() {
+            document.getElementById('modal-pwd').classList.remove('hidden');
+        }
+
+        // 密码校验执行操作
+        function checkPwd() {
+            const inputPwd = document.getElementById('verifyPwd').value;
+            const op = document.getElementById('targetOperate').value;
+            const tid = document.getElementById('targetIndex').value;
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            if (inputPwd !== evt.pwd) return alert("密码错误！");
+            closeModal('modal-pwd');
+
+            if (op === "delEvent") {
+                const newList = events.filter(e => e.id !== tid);
+                saveAllEvents(newList);
+                backHome();
+                alert("礼簿已删除");
+            } else if (op === "delGift") {
+                evt.giftList = evt.giftList.filter(g => g.id !== tid);
+                saveAllEvents(events);
+                renderGiftTable();
+            } else if (op === "clearAll") {
+                if (!confirm("确认清空当前所有礼金记录，不可恢复？")) return;
+                evt.giftList = [];
+                saveAllEvents(events);
+                renderGiftTable();
+                alert("全部记录已清空");
+            }
+        }
+
+        // 语音播报
+        function voiceBroadcast(text) {
+            if (!window.speechSynthesis) return;
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            const utt = new SpeechSynthesisUtterance(text);
+            const voices = speechSynthesis.getVoices();
+            if (evt.voiceType === "female") {
+                const fv = voices.find(v => v.name.includes("女") || v.gender === "female");
+                if (fv) utt.voice = fv;
+            } else if (evt.voiceType === "male") {
+                const mv = voices.find(v => v.name.includes("男") || v.gender === "male");
+                if (mv) utt.voice = mv;
+            }
+            speechSynthesis.speak(utt);
+        }
+
+        // 导出Excel
+        function exportExcel() {
+            const events = getAllEvents();
+            const evt = events.find(e => e.id === currentEventId);
+            const list = evt.giftList.map((g, i) => ({
+                序号: i + 1,
+                来宾姓名: g.name,
+                礼金金额(元): g.money,
+                备注: g.remark,
+                登记时间: g.time
+            }));
+            const ws = XLSX.utils.json_to_sheet(list);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "礼金明细");
+            XLSX.writeFile(wb, evt.name + "_礼金表.xlsx");
+        }
+
+        // 打印页面
+        function printBook() {
+            window.print();
+        }
+
+        // 全部数据导出备份 json
+        function exportAllData() {
+            const data = getAllEvents();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "礼簿全部数据备份.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 导入备份文件
+        function importAllData() {
+            document.getElementById('fileImport').click();
+        }
+        function readImportFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    saveAllEvents(data);
+                    renderEventList();
+                    alert("数据导入成功！");
+                } catch (err) {
+                    alert("备份文件格式错误");
+                }
+            };
+            reader.readAsText(file);
+            document.getElementById('fileImport').value = "";
+        }
+    </script>
+</body>
+</html>
